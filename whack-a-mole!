@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whack-a-Mole Game</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the game elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        .game-container {
+            background-color: #2d3748; /* Darker grey for game container */
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            padding: 30px;
+            text-align: center;
+            max-width: 90%; /* Responsive max-width */
+            width: 500px; /* Fixed width for larger screens */
+            box-sizing: border-box; /* Include padding in width */
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            color: #e2e8f0; /* Light text color */
+            font-size: 1.25rem; /* Larger font size */
+            font-weight: bold;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 columns */
+            grid-gap: 15px; /* Gap between holes */
+            margin-bottom: 20px;
+        }
+
+        .hole {
+            width: 100%;
+            padding-bottom: 100%; /* Makes the hole square */
+            background-color: #4a5568; /* Grey for holes */
+            border-radius: 50%; /* Circular holes */
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #6b7280; /* Border for holes */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .hole:hover {
+            background-color: #6b7280; /* Slightly lighter on hover */
+        }
+
+        .mole {
+            position: absolute;
+            bottom: -100%; /* Start below the hole */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%; /* Mole size relative to hole */
+            height: 80%;
+            background-color: #f6ad55; /* Orange color for mole */
+            border-radius: 50%;
+            transition: bottom 0.2s ease-out; /* Smooth pop-up animation */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem; /* Emoji size */
+            line-height: 1; /* Adjust line height for emoji */
+            filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.3)); /* Shadow for pop effect */
+        }
+
+        .mole.up {
+            bottom: 0; /* Move mole up */
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column; /* Stack buttons vertically on small screens */
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .game-button {
+            padding: 12px 25px;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: none;
+            color: white;
+        }
+
+        .game-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .start-button {
+            background: linear-gradient(145deg, #48bb78, #38a169); /* Green gradient */
+        }
+        .start-button:hover {
+            background: linear-gradient(145deg, #38a169, #2f855a);
+        }
+
+        .ad-button {
+            background: linear-gradient(145deg, #63b3ed, #4299e1); /* Blue gradient */
+        }
+        .ad-button:hover {
+            background: linear-gradient(145deg, #4299e1, #3182ce);
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: #2d3748;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            width: 400px;
+            box-sizing: border-box;
+        }
+
+        .modal-content h3 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #48bb78; /* Green for titles */
+        }
+
+        .modal-content button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .modal-content button:hover {
+            background-color: #3182ce;
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 640px) {
+            .button-group {
+                flex-direction: row; /* Buttons side-by-side on larger screens */
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer" class="game-container">
+        <h1 class="text-3xl font-bold text-white mb-6">Whack-a-Mole!</h1>
+
+        <!-- Game Information Display -->
+        <div class="game-info">
+            <div>Score: <span id="score">0</span></div>
+            <div>Time: <span id="timeLeft">30</span>s</div>
+            <div>Lives: <span id="lives">3</span></div>
+        </div>
+
+        <!-- Game Grid for Moles -->
+        <div class="game-grid" id="gameGrid">
+            <!-- Holes will be dynamically generated here by JavaScript -->
+        </div>
+
+        <!-- Game Control Buttons -->
+        <div class="button-group">
+            <button id="startButton" class="game-button start-button">Start Game</button>
+            <button id="adButton" class="game-button ad-button hidden">Watch Ad for +1 Life</button>
+        </div>
+    </div>
+
+    <!-- Message Modal -->
+    <div id="messageModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modalTitle"></h3>
+            <p id="modalMessage"></p>
+            <button id="modalCloseButton" class="hidden">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Game state variables
+        let score = 0;
+        let timeLeft = 30; // Initial game time in seconds
+        let lives = 3; // Initial lives
+        let gameInterval; // Interval for the game timer
+        let moleInterval; // Interval for moles popping up
+        let lastMoleHole; // To prevent same mole popping up consecutively
+
+        // DOM element references
+        const scoreDisplay = document.getElementById('score');
+        const timeLeftDisplay = document.getElementById('timeLeft');
+        const livesDisplay = document.getElementById('lives');
+        const gameGrid = document.getElementById('gameGrid');
+        const startButton = document.getElementById('startButton');
+        const adButton = document.getElementById('adButton');
+        const messageModal = document.getElementById('messageModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalCloseButton = document.getElementById('modalCloseButton');
+
+        // Number of holes in the grid
+        const numberOfHoles = 9;
+        const molePopUpTimeMin = 700; // Minimum time a mole stays up (ms)
+        const molePopUpTimeMax = 1200; // Maximum time a mole stays up (ms)
+        const moleIntervalTime = 800; // Interval between mole appearances (ms)
+
+        // --- Game Initialization and Setup ---
+
+        /**
+         * Initializes the game board by creating mole holes.
+         */
+        function createHoles() {
+            gameGrid.innerHTML = ''; // Clear any existing holes
+            for (let i = 0; i < numberOfHoles; i++) {
+                const hole = document.createElement('div');
+                hole.classList.add('hole');
+                hole.dataset.id = i; // Assign a unique ID to each hole
+
+                const mole = document.createElement('div');
+                mole.classList.add('mole');
+                mole.textContent = '😠'; // Mole emoji
+                hole.appendChild(mole); // Place mole inside the hole
+
+                hole.addEventListener('click', whackMole); // Add click listener to whack moles
+                gameGrid.appendChild(hole);
+            }
+        }
+
+        /**
+         * Shows a custom modal message to the user.
+         * @param {string} title - The title of the modal.
+         * @param {string} message - The message content.
+         * @param {boolean} showCloseButton - Whether to show an OK button to close the modal.
+         */
+        function showMessage(title, message, showCloseButton = false) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            if (showCloseButton) {
+                modalCloseButton.classList.remove('hidden');
+                modalCloseButton.onclick = hideMessage; // Set click handler for close button
+            } else {
+                modalCloseButton.classList.add('hidden');
+            }
+            messageModal.classList.add('show');
+        }
+
+        /**
+         * Hides the custom modal message.
+         */
+        function hideMessage() {
+            messageModal.classList.remove('show');
+            modalCloseButton.onclick = null; // Clear click handler
+        }
+
+        // --- Game Logic ---
+
+        /**
+         * Starts the game. Resets score, time, and lives, then begins intervals.
+         */
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            lives = 3;
+            scoreDisplay.textContent = score;
+            timeLeftDisplay.textContent = timeLeft;
+            livesDisplay.textContent = lives;
+
+            // Hide start button, show ad button
+            startButton.classList.add('hidden');
+            adButton.classList.remove('hidden');
+
+            // Clear any existing intervals to prevent multiple game loops
+            clearInterval(gameInterval);
+            clearInterval(moleInterval);
+
+            // Start the game timer countdown
+            gameInterval = setInterval(countdown, 1000);
+
+            // Start moles popping up
+            moleInterval = setInterval(popRandomMole, moleIntervalTime);
+
+            // Hide any active moles
+            document.querySelectorAll('.mole').forEach(mole => mole.classList.remove('up'));
+
+            showMessage('Game Started!', 'Whack as many moles as you can! Don\'t let them escape!', false);
+            setTimeout(hideMessage, 2000); // Hide after 2 seconds
+        }
+
+        /**
+         * Handles the game countdown. Ends the game when time runs out or lives are depleted.
+         */
+        function countdown() {
+            timeLeft--;
+            timeLeftDisplay.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                endGame('Time\'s Up!');
+            } else if (lives <= 0) {
+                endGame('No Lives Left!');
+            }
+        }
+
+        /**
+         * Selects a random hole for a mole to pop up.
+         * Ensures the same hole doesn't pop up twice in a row.
+         * @returns {HTMLElement} The randomly selected mole element.
+         */
+        function getRandomMole() {
+            const moles = document.querySelectorAll('.mole');
+            let randomMole;
+            let randomIndex;
+
+            do {
+                randomIndex = Math.floor(Math.random() * numberOfHoles);
+                randomMole = moles[randomIndex];
+            } while (randomMole.parentNode.dataset.id === lastMoleHole); // Ensure different hole
+
+            lastMoleHole = randomMole.parentNode.dataset.id; // Update last mole hole
+
+            return randomMole;
+        }
+
+        /**
+         * Makes a random mole pop up and disappear after a set time.
+         * If the mole is not whacked, a life is lost.
+         */
+        function popRandomMole() {
+            const mole = getRandomMole();
+            mole.classList.add('up'); // Make mole visible
+
+            const popUpDuration = Math.random() * (molePopUpTimeMax - molePopUpTimeMin) + molePopUpTimeMin;
+
+            // Set a timeout for the mole to disappear
+            mole.timeoutId = setTimeout(() => {
+                mole.classList.remove('up'); // Make mole disappear
+                // If the mole was not whacked, decrement a life
+                if (mole.classList.contains('up') === false) { // Check if it was whacked
+                    lives--;
+                    livesDisplay.textContent = lives;
+                    if (lives <= 0) {
+                        endGame('No Lives Left!');
+                    }
+                }
+            }, popUpDuration);
+        }
+
+        /**
+         * Handles a mole being whacked by the player.
+         * @param {Event} event - The click event.
+         */
+        function whackMole(event) {
+            const mole = event.currentTarget.querySelector('.mole');
+            if (mole && mole.classList.contains('up')) {
+                score++;
+                scoreDisplay.textContent = score;
+                mole.classList.remove('up'); // Make mole disappear immediately
+                clearTimeout(mole.timeoutId); // Clear the auto-disappear timeout
+            }
+        }
+
+        /**
+         * Ends the game, stops intervals, and displays the final score.
+         * @param {string} reason - The reason the game ended (e.g., "Time's Up!", "No Lives Left!").
+         */
+        function endGame(reason) {
+            clearInterval(gameInterval);
+            clearInterval(moleInterval);
+
+            // Hide ad button, show start button
+            adButton.classList.add('hidden');
+            startButton.classList.remove('hidden');
+
+            showMessage('Game Over!', `${reason} Your final score is: ${score}!`, true);
+        }
+
+        /**
+         * Simulates watching a rewarded video ad to gain an extra life.
+         */
+        function watchAdForLives() {
+            showMessage('Watching Ad...', 'Please wait while your ad plays. You will receive +1 life!', false);
+
+            // Simulate ad playback delay
+            setTimeout(() => {
+                lives++;
+                livesDisplay.textContent = lives;
+                showMessage('Ad Complete!', 'You received +1 life!', true);
+            }, 3000); // Simulate a 3-second ad
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', startGame);
+        adButton.addEventListener('click', watchAdForLives);
+
+        // Initial setup when the window loads
+        window.onload = function() {
+            createHoles();
+            showMessage('Welcome to Whack-a-Mole!', 'Click "Start Game" to begin your mole-whacking adventure!', true);
+        };
+    </script>
+</body>
+</html>
